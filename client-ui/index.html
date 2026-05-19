@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vision Analyser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: #1e1e2e;
+      --accent: #7fff6e;
+      --accent2: #6e9fff;
+      --text: #e8e8f0;
+      --muted: #5a5a78;
+      --danger: #ff6e6e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+      background-image:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(127,255,110,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(110,159,255,0.05) 0%, transparent 60%);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 4px 12px;
+      border-radius: 2px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 400;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* --- API KEY INPUT --- */
+    .key-row {
+      width: 100%;
+      max-width: 620px;
+      margin-bottom: 24px;
+    }
+
+    .key-row label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .key-row input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 12px 16px;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .key-row input:focus { border-color: var(--accent); }
+
+    /* --- DROP ZONE --- */
+    .drop-zone {
+      width: 100%;
+      max-width: 620px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 56px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover, .drop-zone.dragging {
+      border-color: var(--accent);
+      background: rgba(127,255,110,0.03);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+
+    .drop-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .drop-label {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .drop-sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* --- PREVIEW --- */
+    #preview-wrap {
+      display: none;
+      width: 100%;
+      max-width: 620px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    #preview-wrap img {
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      display: block;
+      background: #0d0d14;
+    }
+
+    #preview-wrap canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    /* --- BUTTON --- */
+    .btn {
+      width: 100%;
+      max-width: 620px;
+      padding: 16px;
+      background: var(--accent);
+      color: #0a0a0f;
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      margin-bottom: 28px;
+    }
+
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* --- RESULTS --- */
+    #results {
+      width: 100%;
+      max-width: 620px;
+      display: none;
+    }
+
+    .results-title {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-bottom: 14px;
+    }
+
+    .detection-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: slideIn 0.3s ease both;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .detection-card:nth-child(2) { animation-delay: 0.05s; }
+    .detection-card:nth-child(3) { animation-delay: 0.10s; }
+    .detection-card:nth-child(4) { animation-delay: 0.15s; }
+
+    .det-label {
+      font-weight: 700;
+      font-size: 16px;
+      text-transform: capitalize;
+    }
+
+    .det-conf {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .conf-bar-wrap {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .conf-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+
+    /* --- STATUS --- */
+    #status {
+      width: 100%;
+      max-width: 620px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    #status.loading {
+      display: block;
+      background: rgba(110,159,255,0.08);
+      border: 1px solid var(--accent2);
+      color: var(--accent2);
+    }
+
+    #status.error {
+      display: block;
+      background: rgba(255,110,110,0.08);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border: 2px solid var(--accent2);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">Computer Vision Pipeline</div>
+    <h1>Vision<br/><span>Analyser</span></h1>
+    <p class="subtitle">Drop an image. We'll handle the rest.</p>
+  </header>
+
+  <!-- API KEY -->
+  <div class="key-row">
+    <label>Your API Key</label>
+    <input type="password" id="api-key" placeholder="Paste your key here…" />
+  </div>
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" />
+    <span class="drop-icon">🖼</span>
+    <div class="drop-label">Drop image here</div>
+    <div class="drop-sub">or click to browse &nbsp;·&nbsp; JPG, PNG, WebP</div>
+  </div>
+
+  <!-- PREVIEW + CANVAS -->
+  <div id="preview-wrap">
+    <img id="preview" alt="Preview" />
+    <canvas id="bbox-canvas"></canvas>
+  </div>
+
+  <!-- STATUS -->
+  <div id="status"></div>
+
+  <!-- ANALYSE BUTTON -->
+  <button class="btn" id="analyse-btn" disabled>Analyse Image</button>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="results-title">Detections</div>
+    <div id="detections-list"></div>
+  </div>
+
+  <script>
+    // ── CONFIG ──────────────────────────────────────────────────────────────
+    // Change this to your deployed FastAPI URL
+    const API_BASE = "https://runpodtest-production.up.railway.app";
+    // ────────────────────────────────────────────────────────────────────────
+
+    const dropZone    = document.getElementById("drop-zone");
+    const fileInput   = document.getElementById("file-input");
+    const previewWrap = document.getElementById("preview-wrap");
+    const preview     = document.getElementById("preview");
+    const canvas      = document.getElementById("bbox-canvas");
+    const ctx         = canvas.getContext("2d");
+    const analyseBtn  = document.getElementById("analyse-btn");
+    const statusEl    = document.getElementById("status");
+    const resultsEl   = document.getElementById("results");
+    const detList     = document.getElementById("detections-list");
+    const apiKeyInput = document.getElementById("api-key");
+
+    let selectedFile = null;
+
+    // Drag events
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragging"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragging");
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+
+    function handleFile(file) {
+      if (!file) return;
+      selectedFile = file;
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+      previewWrap.style.display = "block";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      resultsEl.style.display = "none";
+      detList.innerHTML = "";
+      setStatus("", "");
+      analyseBtn.disabled = false;
+    }
+
+    // Analyse
+    analyseBtn.addEventListener("click", async () => {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) { setStatus("Please enter your API key.", "error"); return; }
+      if (!selectedFile) { setStatus("Please select an image first.", "error"); return; }
+
+      analyseBtn.disabled = true;
+      setStatus('<span class="spinner"></span> Analysing image…', "loading");
+      resultsEl.style.display = "none";
+      detList.innerHTML = "";
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("confidence_threshold", "0.5");
+
+      try {
+        const res = await fetch(`${API_BASE}/analyze`, {
+          method: "POST",
+          headers: { "X-API-Key": apiKey },
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(err.detail || "Request failed");
+        }
+
+        const data = await res.json();
+        setStatus("", "");
+        renderResults(data);
+      } catch (err) {
+        setStatus(`Error: ${err.message}`, "error");
+      } finally {
+        analyseBtn.disabled = false;
+      }
+    });
+
+    function setStatus(msg, type) {
+      statusEl.className = type ? `status ${type}` : "";
+      statusEl.innerHTML = msg;
+      statusEl.style.display = msg ? "block" : "none";
+    }
+
+    function renderResults(data) {
+      const detections = data?.output?.detections ?? data?.detections ?? [];
+      const imgSize    = data?.output?.image_size ?? data?.image_size ?? [1, 1];
+
+      // Draw bounding boxes on canvas
+      preview.onload = () => drawBoxes(detections, imgSize);
+      if (preview.complete) drawBoxes(detections, imgSize);
+
+      // Render cards
+      detList.innerHTML = "";
+      if (detections.length === 0) {
+        detList.innerHTML = '<div class="detection-card"><span class="det-label">No detections found</span></div>';
+      } else {
+        detections.forEach(det => {
+          const pct = Math.round(det.confidence * 100);
+          detList.innerHTML += `
+            <div class="detection-card">
+              <div style="flex:1">
+                <div class="det-label">${det.label}</div>
+                <div class="conf-bar-wrap">
+                  <div class="conf-bar" style="width:${pct}%"></div>
+                </div>
+              </div>
+              <div class="det-conf" style="margin-left:20px">${pct}%</div>
+            </div>`;
+        });
+      }
+
+      resultsEl.style.display = "block";
+    }
+
+    function drawBoxes(detections, imgSize) {
+      const rect = preview.getBoundingClientRect();
+      canvas.width  = preview.naturalWidth;
+      canvas.height = preview.naturalHeight;
+      canvas.style.width  = "100%";
+      canvas.style.height = "100%";
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const colors = ["#7fff6e", "#6e9fff", "#ff9f6e", "#ff6eb4", "#f0ff6e"];
+
+      detections.forEach((det, i) => {
+        const [x1, y1, x2, y2] = det.bbox;
+        const color = colors[i % colors.length];
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+        // Label background
+        const label = `${det.label} ${Math.round(det.confidence * 100)}%`;
+        ctx.font = "bold 16px Syne, sans-serif";
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = color;
+        ctx.fillRect(x1, y1 - 24, tw + 12, 24);
+        ctx.fillStyle = "#0a0a0f";
+        ctx.fillText(label, x1 + 6, y1 - 6);
+      });
+    }
+  </script>
+</body>
+</html>
